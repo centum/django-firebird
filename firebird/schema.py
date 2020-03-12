@@ -20,13 +20,24 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     sql_rename_column = "ALTER TABLE %(table)s ALTER %(old_column)s TO %(new_column)s"
     sql_create_fk = "ALTER TABLE %(table)s ADD CONSTRAINT %(name)s FOREIGN KEY (%(column)s) REFERENCES %(to_table)s (%(to_column)s)"
 
+
+    @property
+    def _firebird_major_ver(self):
+        with self.connection.cursor() as cursor:
+            fb_ver = str(self.connection.connection.version).split('.')
+            return int(fb_ver[0])
+
     def _alter_column_set_null(self, table_name, column_name, is_null):
-        sql = """
-            UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = %(null_flag)s
-            WHERE RDB$FIELD_NAME = '%(column)s'
-            AND RDB$RELATION_NAME = '%(table_name)s'
-        """
-        null_flag = 'NULL' if is_null else '1'
+        if self._firebird_major_ver >= 3:
+            sql = "ALTER TABLE %(table_name)s ALTER %(column)s %(null_flag)s NOT NULL"
+            null_flag = 'DROP' if is_null else 'SET'
+        else:
+            sql = """
+                UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = %(null_flag)s
+                WHERE RDB$FIELD_NAME = '%(column)s'
+                AND RDB$RELATION_NAME = '%(table_name)s'
+            """
+            null_flag = 'NULL' if is_null else '1'
         return sql % {
             'null_flag': null_flag,
             'column': column_name.upper(),
