@@ -1,0 +1,96 @@
+Backwards incompatible changes in 2.2
+
+Database backend API
+
+
+This section describes changes that may be needed in third-party database backends.
+
+    Third-party database backends must implement support for table check constraints or set
+    DatabaseFeatures.supports_table_check_constraints to False.
+
+    Third party database backends must implement support for ignoring constraints or uniqueness errors while inserting or
+    set DatabaseFeatures.supports_ignore_conflicts to False.
+
+    Third party database backends must implement introspection for DurationField or set DatabaseFeatures.can_introspect_duration_field to False.
+
+    DatabaseFeatures.uses_savepoints now defaults to True.
+
+    Third party database backends must implement support for partial indexes or set DatabaseFeatures.supports_partial_indexes to False.
+
+    DatabaseIntrospection.table_name_converter() and column_name_converter() are removed. Third party database backends may need to
+    instead implement DatabaseIntrospection.identifier_converter().
+    In that case, the constraint names that DatabaseIntrospection.get_constraints() returns must be normalized by identifier_converter().
+
+    SQL generation for indexes is moved from Index to SchemaEditor and these SchemaEditor methods are added:
+        _create_primary_key_sql() and _delete_primary_key_sql()
+        _delete_index_sql() (to pair with _create_index_sql())
+        _delete_unique_sql (to pair with _create_unique_sql())
+        _delete_fk_sql() (to pair with _create_fk_sql())
+        _create_check_sql() and _delete_check_sql()
+
+    The third argument of DatabaseWrapper.__init__(), allow_thread_sharing, is removed.
+
+
+========================================================================================================================
+
+
+Backwards incompatible changes in 2.1
+
+Database backend API
+
+This section describes changes that may be needed in third-party database backends.
+
+    To adhere to PEP 249, exceptions where a database doesn’t support a feature are changed from NotImplementedError
+    to django.db.NotSupportedError.
+
+    Renamed the allow_sliced_subqueries database feature flag to allow_sliced_subqueries_with_in.
+
+    DatabaseOperations.distinct_sql() now requires an additional params argument and returns a tuple of SQL and parameters instead of a SQL string.
+
+    DatabaseFeatures.introspected_boolean_field_type is changed from a method to a property.
+
+
+Features removed in 2.1
+
+    DatabaseIntrospection.get_indexes() is removed.
+
+
+========================================================================================================================
+
+
+Django 2.0
+
+Database backend API
+
+This section describes changes that may be needed in third-party database backends.
+
+    The DatabaseOperations.datetime_cast_date_sql(), datetime_cast_time_sql(), datetime_trunc_sql(),
+    datetime_extract_sql(), and date_interval_sql() methods now return only the SQL to perform the operation instead
+    of SQL and a list of parameters.
+
+    Third-party database backends should add a DatabaseWrapper.display_name attribute with the name of the database
+    that your backend works with. Django may use it in various messages, such as in system checks.
+
+    The first argument of SchemaEditor._alter_column_type_sql() is now model rather than table.
+
+    The first argument of SchemaEditor._create_index_name() is now table_name rather than model.
+
+    To enable FOR UPDATE OF support, set DatabaseFeatures.has_select_for_update_of = True. If the database requires that
+    the arguments to OF be columns rather than tables, set DatabaseFeatures.select_for_update_of_column = True.
+
+    To enable support for Window expressions, set DatabaseFeatures.supports_over_clause to True. You may need to
+    customize the DatabaseOperations.window_start_rows_start_end() and/or window_start_range_start_end() methods.
+
+    Third-party database backends should add a DatabaseOperations.cast_char_field_without_max_length attribute with
+    the database data type that will be used in the Cast function for a CharField if the max_length argument isn’t provided.
+
+    The first argument of DatabaseCreation._clone_test_db() and get_test_db_clone_settings() is now suffix rather than
+    number (in case you want to rename the signatures in your backend for consistency). django.test also now passes those
+    values as strings rather than as integers.
+
+    Third-party database backends should add a DatabaseIntrospection.get_sequences() method based on the stub in BaseDatabaseIntrospection.
+
+
+Features removed in 2.0
+
+    django.db.backends.base.BaseDatabaseOperations.check_aggregate_support() is removed.

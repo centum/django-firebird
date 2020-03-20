@@ -3,6 +3,7 @@ Firebird database backend for Django.
 """
 
 import sys
+from collections import namedtuple
 
 try:
     import fdb as Database
@@ -33,6 +34,10 @@ IntegrityError = Database.IntegrityError
 OperationalError = Database.OperationalError
 
 
+# Structure returned by DatabaseWrapper.version
+VersionInfo = namedtuple('VersionInfo', ['major', 'minor'])
+
+
 class DatabaseWrapper(BaseDatabaseWrapper):
     vendor = 'firebird'
 
@@ -44,11 +49,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     # Any format strings starting with "qn_" are quoted before being used in the
     # output (the "qn_" prefix is stripped before the lookup is performed.
 
-    data_types = {
+    _data_types = {
         'AutoField': 'integer',
         'BigAutoField': 'bigint',
         'BinaryField': 'blob sub_type 0',
-        'BooleanField': 'smallint',
+        'BooleanField': 'boolean',
         'CharField': 'varchar(%(max_length)s)',
         'CommaSeparatedIntegerField': 'varchar(%(max_length)s)',
         'DateField': 'date',
@@ -62,7 +67,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         'BigIntegerField': 'bigint',
         'IPAddressField': 'char(15)',
         'GenericIPAddressField': 'char(39)',
-        'NullBooleanField': 'smallint',
+        'NullBooleanField': 'boolean',
         'OneToOneField': 'integer',
         'PositiveIntegerField': 'integer',
         'PositiveSmallIntegerField': 'smallint',
@@ -73,12 +78,28 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         'UUIDField': 'char(32)',
     }
 
-    data_type_check_constraints = {
-        'BooleanField': '%(qn_column)s IN (0,1)',
-        'NullBooleanField': '(%(qn_column)s IN (0,1)) OR (%(qn_column)s IS NULL)',
+    @cached_property
+    def data_types(self):
+        # Backwards compatibility with pre-firebird 3 versions
+        if self.version.major < 3:
+            self._data_types['BooleanField'] = 'smallint'
+            self._data_types['NullBooleanField'] = 'smallint'
+        return self._data_types
+
+    _data_type_check_constraints = {
+        # 'BooleanField': '%(qn_column)s IN (0,1)',
+        # 'NullBooleanField': '(%(qn_column)s IN (0,1)) OR (%(qn_column)s IS NULL)',
         'PositiveIntegerField': '%(qn_column)s >= 0',
         'PositiveSmallIntegerField': '%(qn_column)s >= 0',
     }
+
+    @cached_property
+    def data_type_check_constraints(self):
+        # Backwards compatibility with pre-firebird 3 versions
+        if self.version.major < 3:
+            self._data_type_check_constraints['BooleanField'] = '%(qn_column)s IN (0,1)'
+            self._data_type_check_constraints['NullBooleanField'] = '(%(qn_column)s IN (0,1)) OR (%(qn_column)s IS NULL)'
+        return self._data_type_check_constraints
 
     operators = {
         'exact': '= %s',
@@ -128,20 +149,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     def __init__(self, *args, **kwargs):
         super(DatabaseWrapper, self).__init__(*args, **kwargs)
 
-        self._server_version = None
         self._db_charset = None
         self.encoding = None
 
         opts = self.settings_dict["OPTIONS"]
         RC = Database.ISOLATION_LEVEL_READ_COMMITED
         self.isolation_level = opts.get('isolation_level', RC)
-
-        self.features = DatabaseFeatures(self)
-        self.ops = DatabaseOperations(self)
-        self.client = DatabaseClient(self)
-        self.creation = DatabaseCreation(self)
-        self.introspection = DatabaseIntrospection(self)
-        self.validation = DatabaseValidation(self)
 
     # #### Backend-specific methods for creating connections and cursors #####
 
@@ -235,11 +248,23 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         engine_version return a full version in string format
         (ie: 'WI-V6.3.5.4926 Firebird 1.5' )
         """
-        if not self._server_version:
-            if not self.connection:
-                self.cursor()
-            self._server_version = self.connection.db_info(Database.isc_info_firebird_version)
-        return self._server_version
+        if not self.connection:
+            self.cursor()
+        return self.connection.db_info(Database.isc_info_firebird_version)
+
+
+    @cached_property
+    def version(self):
+        """
+        Access method for version property.
+        connection.version return the version number in an object VersionInfo format
+        Useful for ask for just a part of a version number.
+        (e.g. connection.version.major == 3 is firebird version 3)
+        """
+        if not self.connection:
+            self.cursor()
+        ver_info = self.connection.version.split('.')
+        return VersionInfo(int(ver_info[0]), int(ver_info[1]))
 
 
 class FirebirdCursorWrapper(object):

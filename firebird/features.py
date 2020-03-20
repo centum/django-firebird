@@ -65,5 +65,6 @@ class DatabaseFeatures(BaseDatabaseFeatures):
         introspection results; it should provide expectations, not run an introspection
         itself.
         """
-
-        return 'SmallIntegerField'
+        if self.connection.version.major < 3:
+            return 'SmallIntegerField'
+        return super().introspected_boolean_field_type(field=field, created_separately=created_separately)
