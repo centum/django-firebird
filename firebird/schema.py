@@ -7,7 +7,11 @@ from django.db.models.fields import AutoField
 from django.db.models.fields.related import ManyToManyField
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.backends.base.schema import _related_non_m2m_objects as _related_objects
-from django.utils.log import getLogger
+import django #+++ svem 10.01.18
+if django.VERSION[0] > 1:
+    from logging import getLogger
+else:
+    from django.utils.log import getLogger
 
 
 logger = getLogger('django.db.backends.schema')

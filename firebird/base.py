@@ -3,6 +3,7 @@ Firebird database backend for Django.
 """
 
 import sys
+import django
 
 try:
     import fdb as Database
@@ -98,6 +99,13 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
     Database = Database
     SchemaEditorClass = DatabaseSchemaEditor
+    if django.VERSION[0] > 1: #+++ svem 10.01.18
+            client_class = DatabaseClient
+            creation_class = DatabaseCreation
+            features_class = DatabaseFeatures
+            introspection_class = DatabaseIntrospection
+            ops_class = DatabaseOperations
+            validation_class = DatabaseValidation
 
     def __init__(self, *args, **kwargs):
         super(DatabaseWrapper, self).__init__(*args, **kwargs)
@@ -157,7 +165,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         """Initializes the database connection settings."""
         pass
 
-    def create_cursor(self):
+    def create_cursor(self, name=''):
         """Creates a cursor. Assumes that a connection is established."""
         cursor = self.connection.cursor()
         return FirebirdCursorWrapper(cursor, self.encoding)

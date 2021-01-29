@@ -143,7 +143,7 @@ class DatabaseOperations(BaseDatabaseOperations):
             return "UPPER(%s)"
         return "%s"
 
-    def for_update_sql(self, nowait=False):
+    def for_update_sql(self, nowait=False, skip_locked=False, of=None): #+++ svem 12.01.18
         """
         Returns the FOR UPDATE SQL clause to lock rows for an update operation.
         """
@@ -243,9 +243,10 @@ class DatabaseOperations(BaseDatabaseOperations):
         return [first % value, second % value]
 
     def quote_name(self, name):
-        if not name.startswith('"') and not name.endswith('"'):
-            name = '"%s"' % utils.truncate_name(name, self.max_name_length())
-        return name.upper()
+        #if not name.startswith('"') and not name.endswith('"'):
+        #    name = '"%s"' % utils.truncate_name(name, self.max_name_length())
+        #return name.upper()
+        return name #+++ svem 10.01.18
 
     def pk_default_value(self):
         return 'NULL'

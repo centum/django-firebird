@@ -1,4 +1,5 @@
 from django.db.models.sql import compiler
+import django
 
 # The izip_longest was renamed to zip_longest in py3
 try:
@@ -21,7 +22,11 @@ class SQLCompiler(compiler.SQLCompiler):
         return row[:index_start] + tuple(values)
 
     def as_sql(self, with_limits=True, with_col_aliases=False, subquery=False):
-        sql, params = super(SQLCompiler, self).as_sql(with_limits=False, with_col_aliases=with_col_aliases, subquery=subquery)
+        if django.VERSION[0] > 1: #+++ svem 10.01.18
+            self.query.subquery=subquery
+            sql, params = super(SQLCompiler, self).as_sql(with_limits=False, with_col_aliases=with_col_aliases)
+        else:
+            sql, params = super(SQLCompiler, self).as_sql(with_limits=False, with_col_aliases=with_col_aliases, subquery=subquery)
 
         if with_limits:
             limits = []
